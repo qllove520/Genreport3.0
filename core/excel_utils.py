@@ -322,3 +322,35 @@ def consolidate_excel_data_and_insert_chart(doc1_path: str, doc2_path: str, doc3
             app.quit()
             # FIXED: Always pass is_error
             if log_callback: log_callback("xlwings 应用程序已关闭。", False)
+
+
+def write_to_excel_with_xlwings(file_path, sheet_name, cell_map, data_dict, log_callback=None):
+    import xlwings as xw
+    app = None
+    try:
+        if log_callback: log_callback(f"使用xlwings打开文件: {file_path}")
+        app = xw.App(visible=False, add_book=False)
+        wb = app.books.open(file_path, update_links=False)
+        if sheet_name not in [s.name for s in wb.sheets]:
+            if log_callback: log_callback(f"找不到工作表: {sheet_name}", is_error=True)
+            return False
+        sht = wb.sheets[sheet_name]
+        for key, cell in cell_map.items():
+            value = data_dict.get(key, "")
+            if value:
+                sht.range(cell).value = value
+                if log_callback: log_callback(f"写入 {key}: {value} 到 {cell}")
+            else:
+                if log_callback: log_callback(f"跳过 {key}，无内容", is_error=False)
+        wb.save()
+        if log_callback: log_callback("数据已成功写入并保存！")
+        wb.close()
+        return True
+    except Exception as e:
+        import traceback
+        if log_callback: log_callback(f"xlwings写入异常: {e}", is_error=True)
+        if log_callback: log_callback(traceback.format_exc(), is_error=True)
+        return False
+    finally:
+        if app:
+            app.quit()

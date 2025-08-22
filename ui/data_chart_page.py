@@ -73,8 +73,7 @@ class ZentaoDataChartPage(QWidget):
                             "3.testcases：请选择导出的验收测试单测试用例（可选项）；会自动覆盖到sheet4\n"
                             "4.Devices_Picture:请选择导出的验收设备图（可选项）；图会等比例的填充到sheet5\n"
                             "5.Testreport:请选择需要上一轮的验收测试报告还是最新版的测试模板\n"
-                            "6.可选项：可以单选，在使用上一轮报告的情况下，也许需求文档+验收设备图不变即可为空跳过。\n"
-                            "7.重点：加密的文档无法操作，请确保文档已解密可读\n")
+                            "6.可选项：可以单选，在使用上一轮报告的情况下，也许需求文档+验收设备图不变即可为空跳过。\n")
 
         tips_label.setWordWrap(True)
         tips_label.setStyleSheet("color: red;")
@@ -378,19 +377,20 @@ class ZentaoDataChartPage(QWidget):
         self.excel_worker_thread = None
 
     def log(self, message: str, is_error: bool = False, clear_prev: bool = False):
-        """Displays plain text messages in the log output area, without icons"""
+        """带时间戳的日志输出，支持错误高亮和清空历史"""
+        from PyQt5.QtCore import Qt
+        from datetime import datetime
         if clear_prev:
             self.log_output.clear()
-
         cursor = self.log_output.textCursor()
-        format = cursor.charFormat()
+        fmt = cursor.charFormat()
         if is_error:
-            format.setForeground(Qt.red)
+            fmt.setForeground(Qt.red)
         else:
-            format.setForeground(Qt.black)
-        cursor.setCharFormat(format)
-
-        self.log_output.append(message)
+            fmt.setForeground(Qt.black)
+        cursor.setCharFormat(fmt)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log_output.append(f"[{timestamp}] {message}")
         self.log_output.ensureCursorVisible()
 
     def save_settings(self):

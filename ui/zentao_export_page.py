@@ -2,7 +2,7 @@
 
 import os
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,QComboBox,
     QLineEdit, QPushButton, QTextEdit, QFileDialog, QMessageBox, QProgressDialog, QGroupBox, QCheckBox
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -184,7 +184,36 @@ class ZentaoExportPage(QWidget):
         test_report_id_layout.addWidget(self.test_report_id_input)
         test_report_id_layout.addWidget(self.save_test_report_id_button)
         global_settings_layout.addLayout(test_report_id_layout)
+        # 指派人标签和下拉框
+        assigned_layout = QHBoxLayout()
 
+        assigned_label = QLabel("指派给:")
+        assigned_layout.addWidget(assigned_label)
+
+        self.assigned_combo = QComboBox()
+        self.assigned_combo.setEditable(True)
+        self.assigned_combo.addItems([
+            "张诗婉", "徐芬", "江信辉", "周雪波", "袁超凡", "朱双彬", "何琪", "刘雨鑫", "邱国祥", ""
+        ])
+        self.assigned_combo.setCurrentText("")  # 默认空白
+        self.assigned_combo.setMinimumHeight(32)
+        self.assigned_combo.setFixedWidth(140)
+        self.assigned_combo.currentTextChanged.connect(self._on_query_conditions_changed)
+        self.assigned_combo.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #2196F3;
+            }
+        """)
+        assigned_layout.addWidget(self.assigned_combo)
+
+        # 添加指派人布局到全局参数设置布局
+        global_settings_layout.addLayout(assigned_layout)
         # 下载目录
         download_dir_layout = QHBoxLayout()
         self.download_dir_label = QLabel("下载目录:")
@@ -305,6 +334,12 @@ class ZentaoExportPage(QWidget):
         layout.addLayout(h_layout)
         return line_edit
 
+    def _on_query_conditions_changed(self, text):
+        # 这里可以写你想要的逻辑，比如刷新查询条件等
+        self.update_log(f"指派人选择变更为: {text}", False)
+        assgined_to = self.assigned_combo.currentText().strip()
+        return assgined_to
+
     def _browse_download_dir(self):
         """Opens a dialog to select the download directory."""
         initial_dir = self.download_dir_display.text()
@@ -407,6 +442,7 @@ class ZentaoExportPage(QWidget):
         account = self.account_input.text().strip()
         password = self.password_input.text().strip()
         product_name = self.product_name_input.text().strip()
+        assgined_to = self.assigned_combo.currentText().strip()
         test_report_id = self.test_report_id_input.text().strip()
         download_dir = self.download_dir_display.text().strip()
         headless_mode = self.headless_checkbox.isChecked()
@@ -447,7 +483,7 @@ class ZentaoExportPage(QWidget):
 
         # 创建导出工作线程
         self.worker_thread = SeleniumWorker(
-            account, password, product_name, test_report_id, download_dir, headless_mode, "export"
+            account, password, product_name,assgined_to,test_report_id, download_dir, headless_mode, "export"
         )
         self.worker_thread.log_signal.connect(self.update_log)
         self.worker_thread.status_signal.connect(self.progress_dialog.setLabelText)

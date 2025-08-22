@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox
+    QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QTextEdit
 )
 from PyQt5.QtCore import Qt
 from core.excel_utils import find_row_by_fuzzy_column_value,write_to_target_sheet
@@ -120,7 +120,7 @@ class ExcelTool(QWidget):
         # 关键词
         self.input_keyword = QLineEdit()
         self.input_keyword.setPlaceholderText("请输入唯一任务书编号，例如：CPKFLX20230619001")
-        form_layout.addRow("任务书编号：:", self.input_keyword)
+        form_layout.addRow("任务书编号:", self.input_keyword)
 
         # 额外字段
         extra_fields = [
@@ -142,13 +142,34 @@ class ExcelTool(QWidget):
 
         main_layout.addLayout(form_layout)
 
-        # 提交按钮
+        # 控制按钮区域（左右分布）
+        button_layout = QHBoxLayout()
         btn_process = QPushButton("提取并写入")
         btn_process.clicked.connect(self.process)
         btn_process.setFixedHeight(40)
         btn_process.setStyleSheet("""
+          QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border-radius: 5px;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px 20px;
+            }
+            QPushButton:hover {
+                background-color: #FB8C00;
+            }
+            QPushButton:pressed {
+                background-color: #F57C00;
+            }
+        """)
+        button_layout.addWidget(btn_process)
+
+        btn_clear = QPushButton("清空所有输入")
+        btn_clear.clicked.connect(self.clear_all_inputs)
+        btn_clear.setStyleSheet("""
             QPushButton {
-                background-color: #007bff;
+                background-color: #9E9E9E;
                 color: white;
                 border-radius: 8px;
                 font-size: 16px;
@@ -156,15 +177,52 @@ class ExcelTool(QWidget):
                 padding: 10px 20px;
             }
             QPushButton:hover {
-                background-color: #0056b3;
+                background-color: #757575;
             }
             QPushButton:pressed {
-                background-color: #004085;
+                background-color: #616161;
+            }
+            QPushButton:disabled {
+                background-color: #BDBDBD;
+                color: #E0E0E0;
             }
         """)
-        main_layout.addWidget(btn_process, alignment=Qt.AlignCenter)
+        button_layout.addWidget(btn_clear)
+        main_layout.addLayout(button_layout)
+
+        # 日志窗口
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.setStyleSheet("""
+            QTextEdit {
+                background-color: #f8f8f8;
+                color: #333;
+                font-family: 'Consolas', 'Monospace';
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+            }
+        """)        
+        main_layout.addWidget(self.log_output)
 
         self.setLayout(main_layout)
+
+    def log(self, message: str, is_error: bool = False, clear_prev: bool = False):
+        """带时间戳的日志输出，支持错误高亮和清空历史"""
+        from PyQt5.QtCore import Qt
+        from datetime import datetime
+        if clear_prev:
+            self.log_output.clear()
+        cursor = self.log_output.textCursor()
+        fmt = cursor.charFormat()
+        if is_error:
+            fmt.setForeground(Qt.red)
+        else:
+            fmt.setForeground(Qt.black)
+        cursor.setCharFormat(fmt)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.log_output.append(f"[{timestamp}] {message}")
+        self.log_output.ensureCursorVisible()
 
     def choose_data_file(self):
         initial_dir = os.path.dirname(self.data_file) if self.data_file else ""
@@ -193,16 +251,36 @@ class ExcelTool(QWidget):
             )
 
     def process(self):
+        import traceback
+        from core.excel_utils import write_to_excel_with_xlwings
         if not self.data_file or not self.template_file:
+            self.log("请先选择 数据台账 和 写入模板", is_error=True, clear_prev=False)
             QMessageBox.warning(self, "错误", "请先选择 数据台账 和 写入模板")
             return
 
         keyword = self.input_keyword.text().strip()
         if not keyword:
-            QMessageBox.warning(self, "错误", "请输入关键词")
+            self.log("请输入唯一的任务书编号", is_error=True, clear_prev=False)
+            QMessageBox.warning(self, "错误", "请输入唯一的任务书编号")
             return
 
         try:
+            self.log(f"开始处理任务书编号：{keyword}", clear_prev=False)
+            self.log(f"数据台账文件: {self.data_file}", clear_prev=False)
+            self.log(f"写入模板文件: {self.template_file}", clear_prev=False)
+            for file_path, desc in [(self.data_file, '数据台账'), (self.template_file, '写入模板')]:
+                if not os.path.isfile(file_path):
+                    self.log(f"{desc}文件不存在: {file_path}", is_error=True, clear_prev=False)
+                    raise FileNotFoundError(f"{desc}文件不存在: {file_path}")
+                if not file_path.lower().endswith(('.xlsx', '.xlsm')):
+                    self.log(f"{desc}文件不是Excel格式: {file_path}", is_error=True, clear_prev=False)
+                    raise ValueError(f"{desc}文件不是Excel格式: {file_path}")
+                size = os.path.getsize(file_path)
+                self.log(f"{desc}文件大小: {size} 字节", clear_prev=False)
+                if size == 0:
+                    self.log(f"{desc}文件大小为0，文件内容异常: {file_path}", is_error=True, clear_prev=False)
+                    raise ValueError(f"{desc}文件大小为0，文件内容异常: {file_path}")
+
             # 提取主数据
             target_fields = ['项目编号', '项目名称', '内部型号', '产品名称', '项目经理', '产品经理', '负责人']
             cell_mapping = {
@@ -217,12 +295,13 @@ class ExcelTool(QWidget):
 
             result = find_row_by_fuzzy_column_value(
                 file_path=self.data_file,
-                key_column='项目_产品',
+                key_column='任务书编号',
                 key_value=keyword,
                 target_columns=target_fields
             )
 
             if not result:
+                self.log("台账中未找到匹配行", is_error=True, clear_prev=False)
                 QMessageBox.warning(self, "未找到", "台账中未找到匹配行")
                 return
 
@@ -242,25 +321,39 @@ class ExcelTool(QWidget):
                 '测试范围': 'E7'
             }
 
-            # 合并数据并写入
-            wb = load_workbook(self.template_file,keep_vba=True)
-            sheet_name = '验收测试结果'
-            if sheet_name not in wb.sheetnames:
-                raise ValueError(f"写入模板缺少工作表：{sheet_name}")
-            sheet = wb[sheet_name]
+            # 合并数据
+            all_data = result.copy()
+            all_data.update(extra_data)
+            all_cell_mapping = cell_mapping.copy()
+            all_cell_mapping.update(extra_cell_mapping)
 
-            # 主数据写入
-            for key, cell in cell_mapping.items():
-                sheet[cell] = result.get(key, "")
-
-            # 附加字段写入（仅填写的才写）
-            for key, cell in extra_cell_mapping.items():
-                if key in extra_data:
-                    sheet[cell] = extra_data[key]
-
-            wb.save(self.template_file)
-
-            QMessageBox.information(self, "成功", "数据已成功写入 Excel 模板！")
+            # 用xlwings写入
+            self.log("准备用xlwings写入数据到模板...", clear_prev=False)
+            success = write_to_excel_with_xlwings(
+                self.template_file,
+                sheet_name='验收测试结果',
+                cell_map=all_cell_mapping,
+                data_dict=all_data,
+                log_callback=self.log
+            )
+            if success:
+                self.log("数据已成功写入 Excel 模板！", clear_prev=False)
+                QMessageBox.information(self, "成功", "数据已成功写入 Excel 模板！")
+            else:
+                self.log("写入失败，请检查日志。", is_error=True, clear_prev=False)
+                QMessageBox.critical(self, "错误", "写入失败，请检查日志。")
 
         except Exception as e:
+            tb = traceback.format_exc()
+            self.log(f"发生错误：{type(e).__name__}: {str(e)}\n详细信息：\n{tb}", is_error=True, clear_prev=False)
             QMessageBox.critical(self, "错误", f"发生错误：\n{str(e)}")
+
+    def clear_all_inputs(self):
+        """清空所有输入框和日志内容"""
+        for field in self.input_fields.values():
+            field.clear()
+        self.input_keyword.clear()
+        self.data_file_display.clear()
+        self.template_file_display.clear()
+        self.log_output.clear()
+        self.log("所有输入已清空。", clear_prev=True)

@@ -140,15 +140,13 @@ class SeleniumWorker(QThread):
             self.log_signal.emit(f"测试单号：{test_report_id}", False)
             print(assgined_to,test_report_id)
             self.log_signal.emit(f"导航到测试单浏览页...", False)
-            self.driver.get(f"{self.base_url}/testtask-browse-1065-0-all,totalStatus.html")
+            self.driver.get(f"{self.base_url}/testcase-browse-{product_id}.html")
             time.sleep(1)
 
             # Export Test Cases
             self.log_signal.emit("\n--- 导出测试单中 ---", False)
             self.progress_signal.emit(95)
-            extracted_data = self._extract_bug_data()
-            print(extracted_data)
-            if not self._export_test_cases(self.driver, self.base_url, product_id,assgined_to,test_report_id, '[公共] 验收报告'):
+            if not self._export_test_cases(self.driver, self.base_url, product_id, '[公共] 验收报告'):
                 self.finished_signal.emit(False, "导出测试单失败。")
                 return
             self.log_signal.emit("测试单导出完成。", False)
@@ -164,53 +162,6 @@ class SeleniumWorker(QThread):
             if self.driver:
                 self.log_signal.emit("关闭浏览器中...", False)
                 self.driver.quit()
-
-    def _extract_bug_data(self):
-        """
-        从表格中提取 Bug 的标题和链接内容。
-        """
-        extracted_data = []
-        try:
-            self.log_signal.emit("开始从表格中提取数据...", False)
-
-            # 找到所有 class="text-left" 的行
-            bug_rows = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'tr.text-left'))
-            )
-
-            if not bug_rows:
-                self.log_signal.emit("未找到任何 Bug 记录。", False)
-                return extracted_data
-
-            self.log_signal.emit(f"找到 {len(bug_rows)} 测试单记录。", False)
-
-            for row in bug_rows:
-                try:
-                    # 在每一行中找到 class="c-name" 的 td 元素下的 a 标签
-                    bug_link_element = row.find_element(By.CSS_SELECTOR, 'td.c-name a')
-
-                    title = bug_link_element.get_attribute('title')
-                    href = bug_link_element.get_attribute('href')
-
-                    extracted_data.append({
-                        'title': title,
-                        'href': href
-                    })
-
-                except NoSuchElementException:
-                    # 如果某一行没有找到 c-name a 元素，则跳过
-                    continue
-
-            self.log_signal.emit("数据提取完成。", False)
-
-        except TimeoutException:
-            self.log_signal.emit("等待表格加载超时，数据提取失败。", True)
-        except Exception as e:
-            self.log_signal.emit(f"数据提取时发生意外错误: {e}", True)
-            self.log_signal.emit(traceback.format_exc(), True)
-
-        return extracted_data
-
 
     def _search_bugs(self):
         """
@@ -946,7 +897,7 @@ class SeleniumWorker(QThread):
         return self._export_data_to_file(driver, f"{base_url}/bug-export-{product_id}-status,id_desc--{project_id}.html",
                                          "未关闭的 Bug", template_keyword)
 
-    def _export_test_cases(self, driver, base_url, product_id,assgined_to,test_reposr_id, template_keyword):
+    def _export_test_cases(self, driver, base_url, product_id, template_keyword):
         """Internal helper for exporting test cases."""
         export_page_url = f"{base_url}/testcase-export-{product_id}-id_desc-0-all-testcase.html"
         return self._export_data_to_file(driver, export_page_url, "测试单", template_keyword)

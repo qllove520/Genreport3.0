@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="com.obiscr.chatgpt.settings.EasyCodeState">
+    <option name="projectFiles" value="$PROJECT_DIR$/config/demo.html;C:/Users/XD04045/Downloads/Genreporttool2.5-main/config/settings.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/core/bug_operator_worker.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/core/excel_utils.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/core/excel_worker.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/core/selenium_worker.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/core/settings_manager.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/acceptance_filling_page.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/bug_query_page.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/data_chart_page.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/ExcelTool.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/main_window.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/user_info_widget.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/ui/zentao_export_page.py;C:/Users/XD04045/Downloads/Genreporttool2.5-main/main.py" />
+  </component>
+</project>
